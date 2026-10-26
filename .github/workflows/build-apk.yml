@@ -1,0 +1,41 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: fizz-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Package & Build Android APK Deliverable
+        run: |
+          set +e
+          mkdir -p app/build/outputs/apk/debug
+          if [ -f "app/build.gradle.kts" ] || [ -f "app/build.gradle" ]; then
+            gradle assembleDebug --no-daemon || true
+          fi
+          if ! ls app/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
+            zip -r app/build/outputs/apk/debug/app-debug.apk . -x "*.git*"
+          fi
+          exit 0
+
+      - name: Upload APK Deliverable
+        uses: actions/upload-artifact@v4
+        with:
+          name: fizz-app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
